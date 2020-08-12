@@ -145,7 +145,7 @@ def Get_Filaments(sN):
                 f = np.append(f.reshape(f.shape[0], 3), pt.reshape(1, 3), axis=0)
                 G = np.delete(G, idx, axis=0)
             if f.shape[0] != 0:
-                print ("Start:", i, "End", np.argmin(get_Distance(PP[:2*N], pt)))
+                # print ("Start:", i, "End", np.argmin(get_Distance(PP[:2*N], pt)))
                 F.append(f)
 
     F = np.array(F)
@@ -165,26 +165,28 @@ def Get_Filaments(sN):
     return F[0]
 
 
-Get_Filaments(41)
+# Get_Filaments(41)
+
 
 def Check(sN):
-    SnP = "Snap/snap_%03d" % sN                          # Snap Path and file
+    SnP = "Snap/snap_%03d" % sN                             # Snap Path and file
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
 
     PP = rs.read_sf_block(SfP, 'GPOS')/10**3                # Galaxy positions (reducing to lower numbers so exp(PP) is not 0)
-    RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
-    # MVir = rs.read_sf_block(SfP, 'MVIR')                   # Mass Virial
+    GP = rs.read_block(SnP, 'POS', parttype=0)/10**3        # Gas Position
+    T = rs.read_block(SnP, 'HOTT', parttype=0)              # Gas Temperature
+
+    # RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
+    # MVir = rs.read_sf_block(SfP, 'MVIR')                    # Mass Virial
+    GP -= PP[0]
     PP -= PP[0]                                             # Shifting system so central galaxy is in center
     f = Get_Filaments(41)
 
-    GPos = rs.read_block(SnP, 'POS', parttype=0)        # Gas Position
-    T = rs.read_block(SnP, 'HOTT', parttype=0)          # Gas Temperature
-
-    x, y, z = GPos[:, 0], GPos[:, 1], GPos[:, 2]
+    x, y, z = GP[:, 0], GP[:, 1], GP[:, 2]
     x1, x2 = np.min(f[:, 0]), np.max(f[:, 0])
     y1, y2 = np.min(f[:, 1]), np.max(f[:, 1])
     z1, z2 = np.min(f[:, 2]), np.max(f[:, 2])
-
+    print (x1, x2, y1, y2, z1, z2)
     ID = np.where((x > x1)                  # Get stars in frame
                   & (x < x2)
                   & (y > y1)
@@ -196,8 +198,10 @@ def Check(sN):
     x, y, z = x[ID[0]], y[ID[0]], z[ID[0]]
     T = T[ID[0]]
 
+    print (x.shape, y.shape, z.shape, T.shape)
 
-#Check(41)
+
+Check(41)
 
 
 def Plot_Ridge2D(sN, gN, h=0.01, D=2, ThreeDPlot=False, weights=False):
