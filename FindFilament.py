@@ -7,7 +7,8 @@ from mpl_toolkits.mplot3d import Axes3D
 # from matplotlib.colors import LogNorm
 from scipy.stats import multivariate_normal
 from progressbar import ProgressBar
-
+from scipy.interpolate import interp2d
+from scipy.interpolate import splprep, splev
 
 def get_Distance(coord, c):
     d, D = coord.shape, c.shape
@@ -111,7 +112,10 @@ def Get_Filaments(sN):
     print ("Number and dimension of points:", G.shape)
 
     ID = np.where(MVir > 300)
+    N = len(ID[0])
+    PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
 
+    """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -119,17 +123,17 @@ def Get_Filaments(sN):
     x = np.cos(u)*np.sin(v)
     y = np.sin(u)*np.sin(v)
     z = np.cos(v)
-
-    N = len(ID[0])
+    """
 
     for i in range(N):
         R = RVir[i]
         ID = np.where(get_Distance(G, PP[i]) > R)
         G = G[ID[0]]
         # print (G.shape)
-        ax.plot_surface(R*x+PP[i, 0], R*y+PP[i, 1], R*z+PP[i, 2], color='red', alpha=0.4)
+        # ax.plot_surface(R*x+PP[i, 0], R*y+PP[i, 1], R*z+PP[i, 2], color='red', alpha=0.4)
 
-    F = []
+
+    F, S = [], []
     for i in range(N):
         while True:
             pt = G[np.argmin(get_Distance(G, PP[i]))]
@@ -147,8 +151,10 @@ def Get_Filaments(sN):
             if f.shape[0] != 0:
                 # print ("Start:", i, "End", np.argmin(get_Distance(PP[:2*N], pt)))
                 F.append(f)
+                S.append([i, np.argmin(get_Distance(PP, pt))])
 
-    F = np.array(F)
+    F, S = np.array(F), np.array(S)
+    """
     # print (F)
     ax.set_xlim([-15, 15])
     ax.set_ylim([-15, 15])
@@ -162,11 +168,39 @@ def Get_Filaments(sN):
     # plt.show()
     plt.clf()
     print (G.shape)
-    return F[0]
+    """
+    return F, S
 
 
-# Get_Filaments(41)
+def get_FilamentDistance(F):
+    d = 0
+    for i in range(1, len(F)):
+        d += get_Distance(F[i-1], F[i])
+    return d
 
+
+def FilamentDistance(sN):
+    F, S = Get_Filaments(sN)
+    #f = interp2d((), F[0])
+
+    SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
+
+    PP = rs.read_sf_block(SfP, 'GPOS')/10**3                # Galaxy positions (reducing to lower numbers so exp(PP) is not 0)
+    RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
+    PP -= PP[0]                                             # Shifting system so central galaxy is in center
+
+    D = np.empty(len(F))
+    MD = np.empty(len(F))
+
+    for i in range(len(F)):
+        C1, C2 = S[i, 0], S[i, 1]
+        D[i] = get_FilamentDistance(F[i])
+        MD[i] = get_Distance(PP[C1], PP[C2]) - RVir[C1] - RVir[C2]
+
+    plt.plot(D-MD)
+    plt.show()
+
+FilamentDistance(41)
 
 def Check(sN):
     SnP = "Snap/snap_%03d" % sN                             # Snap Path and file
@@ -201,7 +235,7 @@ def Check(sN):
     print (x.shape, y.shape, z.shape, T.shape)
 
 
-Check(41)
+# Check(41)
 
 
 def Plot_Ridge2D(sN, gN, h=0.01, D=2, ThreeDPlot=False, weights=False):
