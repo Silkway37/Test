@@ -7,8 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D
 # from matplotlib.colors import LogNorm
 from scipy.stats import multivariate_normal
 from progressbar import ProgressBar
-from scipy.interpolate import interp2d
-from scipy.interpolate import splprep, splev
+
 
 def get_Distance(coord, c):
     d, D = coord.shape, c.shape
@@ -115,7 +114,6 @@ def Get_Filaments(sN):
     N = len(ID[0])
     PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
 
-
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -124,7 +122,6 @@ def Get_Filaments(sN):
     y = np.sin(u)*np.sin(v)
     z = np.cos(v)
 
-
     for i in range(N):
         R = RVir[i]
         ID = np.where(get_Distance(G, PP[i]) > R)
@@ -132,17 +129,19 @@ def Get_Filaments(sN):
         # print (G.shape)
         ax.plot_surface(R*x+PP[i, 0], R*y+PP[i, 1], R*z+PP[i, 2], color='red', alpha=0.4)
 
-
     F, S = [], []
     for i in range(N):
         while True:
             pt = G[np.argmin(get_Distance(G, PP[i]))]
-            if get_Distance(PP[i], pt) > get_Distance(PP, pt).any():
+            # IS = np.where(get_Distance(PP[i], pt) - RVir[i] > get_Distance(PP, pt) - RVir)
+            # print (IS)
+            if (get_Distance(PP[i], pt) - RVir[i]) > (get_Distance(PP, pt) - RVir).any():
+                # print (i)
                 break
             f = np.array([])
             while True:
                 idx = np.argmin(get_Distance(G, pt))
-                # print (G[idx], True)
+                # print (i)
                 if get_Distance(G[idx], pt) > get_Distance(PP, pt).any():
                     break
                 if len(f) > 5 and get_Distance(G[idx], pt) > 5*get_FilamentDistance(f)/len(f):
@@ -152,6 +151,7 @@ def Get_Filaments(sN):
                 G = np.delete(G, idx, axis=0)
             if f.shape[0] != 0:
                 # print ("Start:", i, "End", np.argmin(get_Distance(PP[:2*N], pt)))
+                # print (i)
                 F.append(f)
                 S.append([i, np.argmin(get_Distance(PP, pt))])
 
@@ -182,8 +182,7 @@ def get_FilamentDistance(F):
 
 def FilamentDistance(sN):
     F, S = Get_Filaments(sN)
-    #f = interp2d((), F[0])
-
+    print (S)
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
 
     PP = rs.read_sf_block(SfP, 'GPOS')/10**3                # Galaxy positions (reducing to lower numbers so exp(PP) is not 0)
@@ -213,12 +212,14 @@ def FilamentDistance(sN):
 
         if C1 == C2:
             r[i] = 1
-    print (S)
+    # print (S)
     print (len(F), np.sum(s), np.sum(c), np.sum(o), np.sum(r))
+
 
 FilamentDistance(41)
 
-def Check(sN):
+
+def Check(sN, bins=50):
     SnP = "Snap/snap_%03d" % sN                             # Snap Path and file
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
 
@@ -226,7 +227,7 @@ def Check(sN):
     GP = rs.read_block(SnP, 'POS', parttype=0)/10**3        # Gas Position
     T = rs.read_block(SnP, 'HOTT', parttype=0)              # Gas Temperature
 
-    # RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
+    RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
     # MVir = rs.read_sf_block(SfP, 'MVIR')                    # Mass Virial
     GP -= PP[0]
     PP -= PP[0]                                             # Shifting system so central galaxy is in center
@@ -237,18 +238,48 @@ def Check(sN):
     y1, y2 = np.min(f[:, 1]), np.max(f[:, 1])
     z1, z2 = np.min(f[:, 2]), np.max(f[:, 2])
     print (x1, x2, y1, y2, z1, z2)
-    ID = np.where((x > x1)                  # Get stars in frame
-                  & (x < x2)
-                  & (y > y1)
-                  & (y < y2)
-                  & (z > z1)
-                  & (z < z2)
+    ID = np.where((x > x1 - np.abs(x1)/2)                  # Get stars in frame
+                  & (x < x2 + np.abs(x2)/2)
+                  & (y > y1 - np.abs(y1)/2)
+                  & (y < y2 + np.abs(y2)/2)
+                  & (z > z1 - np.abs(z1)/2)
+                  & (z < z2 + np.abs(z2)/2)
                   & (T > 10**5)
                   & (T < 10**7))
     x, y, z = x[ID[0]], y[ID[0]], z[ID[0]]
     T = T[ID[0]]
 
-    print (x.shape, y.shape, z.shape, T.shape)
+    CW, xm, ym = np.histogram2d(x, y, bins=bins,           # With weights
+                                normed=False, weights=T)
+
+    CC, xm, ym = np.histogram2d(x, y, bins=bins,           # Without weights
+                                normed=False)
+
+    xm, ym = np.meshgrid(xm, ym, indexing='ij')         # Create meshgrid
+
+    fig, ax = plt.subplots(1, 1)
+    pcm = ax.pcolormesh(xm, ym, CW/CC,
+                        cmap=plt.cm.jet,
+                        vmin=10**5, vmax=10**7)                      # Plot
+    cbar = fig.colorbar(pcm, ax=ax, ticks=[10**5, 1*10**6, 2*10**6,
+                                           3*10**6, 4*10**6,
+                                           5*10**6, 6*10**6,
+                                           7*10**6, 8*10**6,
+                                           9*10**6, 10**7])
+    cbar.ax.set_yticklabels(['$0.1$', '$1$', '$2$', '$3$', '$4$',
+                             '$5$', '$6$', '$7$', '$8$', '$9$', '$10$'])
+    cbar.set_label('$T\\,[10^{6}\\cdot K]$', rotation=270, labelpad=15)
+    th = np.linspace(0, 2*np.pi, 100)
+    ax.plot(PP[0, 0]+RVir[0]*np.cos(th), PP[0, 1]+RVir[0]*np.sin(th), color='black')
+    ax.plot(PP[8, 0]+RVir[8]*np.cos(th), PP[8, 1]+RVir[8]*np.sin(th), color='black')
+    ax.set_xlim([x1 - np.abs(x1), x2 + np.abs(x2)])
+    ax.set_ylim([y1 - np.abs(y1), y2 + np.abs(y1)])
+    # ax.axis('off')
+    plt.tight_layout()
+    plt.scatter(f[:, 0], f[:, 1])
+    # plt.scatter(x, y, s=1)
+    plt.savefig('Figures/Test.png')
+    plt.clf()
 
 
 # Check(41)
