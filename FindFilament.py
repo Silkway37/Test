@@ -115,7 +115,7 @@ def Get_Filaments(sN):
     N = len(ID[0])
     PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
 
-    """
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -123,27 +123,29 @@ def Get_Filaments(sN):
     x = np.cos(u)*np.sin(v)
     y = np.sin(u)*np.sin(v)
     z = np.cos(v)
-    """
+
 
     for i in range(N):
         R = RVir[i]
         ID = np.where(get_Distance(G, PP[i]) > R)
         G = G[ID[0]]
         # print (G.shape)
-        # ax.plot_surface(R*x+PP[i, 0], R*y+PP[i, 1], R*z+PP[i, 2], color='red', alpha=0.4)
+        ax.plot_surface(R*x+PP[i, 0], R*y+PP[i, 1], R*z+PP[i, 2], color='red', alpha=0.4)
 
 
     F, S = [], []
     for i in range(N):
         while True:
             pt = G[np.argmin(get_Distance(G, PP[i]))]
-            if get_Distance(PP[i], pt) > 1.1*RVir[i]:
+            if get_Distance(PP[i], pt) > get_Distance(PP, pt).any():
                 break
             f = np.array([])
             while True:
                 idx = np.argmin(get_Distance(G, pt))
                 # print (G[idx], True)
-                if get_Distance(G[idx], pt) > 0.35:
+                if get_Distance(G[idx], pt) > get_Distance(PP, pt).any():
+                    break
+                if len(f) > 5 and get_Distance(G[idx], pt) > 5*get_FilamentDistance(f)/len(f):
                     break
                 pt = G[idx]
                 f = np.append(f.reshape(f.shape[0], 3), pt.reshape(1, 3), axis=0)
@@ -154,7 +156,7 @@ def Get_Filaments(sN):
                 S.append([i, np.argmin(get_Distance(PP, pt))])
 
     F, S = np.array(F), np.array(S)
-    """
+
     # print (F)
     ax.set_xlim([-15, 15])
     ax.set_ylim([-15, 15])
@@ -162,13 +164,12 @@ def Get_Filaments(sN):
 
     for f in F:
         ax.scatter(f[:, 0], f[:, 1], f[:, 2], s=2, alpha=1)
-    ax.scatter(G[:, 0], G[:, 1], G[:, 2], s=1, c='black', alpha=0.05)
+    # ax.scatter(G[:, 0], G[:, 1], G[:, 2], s=1, c='black', alpha=0.05)
     # plt.axis('off')
-    plt.savefig('Figures/Test.png')
-    # plt.show()
+    # plt.savefig('Figures/Test.png')
+    plt.show()
     plt.clf()
-    print (G.shape)
-    """
+
     return F, S
 
 
@@ -192,13 +193,28 @@ def FilamentDistance(sN):
     D = np.empty(len(F))
     MD = np.empty(len(F))
 
+    s = np.zeros(len(F))
+    c = np.zeros(len(F))
+    o = np.zeros(len(F))
+    r = np.zeros(len(F))
+
     for i in range(len(F)):
         C1, C2 = S[i, 0], S[i, 1]
         D[i] = get_FilamentDistance(F[i])
         MD[i] = get_Distance(PP[C1], PP[C2]) - RVir[C1] - RVir[C2]
 
-    plt.plot(D-MD)
-    plt.show()
+        if np.abs(D[i]-MD[i]) < 1:
+            s[i] = 1
+        else:
+            c[i] = 1
+
+        if (get_Distance(F[i], PP[C1]).all() > 1.1*RVir[C1]) or (get_Distance(F[i], PP[C2]).all() > 1.1*RVir[C2]):
+            o[i] = 1
+
+        if C1 == C2:
+            r[i] = 1
+    print (S)
+    print (len(F), np.sum(s), np.sum(c), np.sum(o), np.sum(r))
 
 FilamentDistance(41)
 
