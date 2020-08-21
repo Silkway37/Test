@@ -127,25 +127,26 @@ def Get_Filaments(sN):
         ID = np.where(get_Distance(G, PP[i]) > R)
         G = G[ID[0]]
         # print (G.shape)
-        ax.plot_surface(R*x+PP[i, 0], R*y+PP[i, 1], R*z+PP[i, 2], color='red', alpha=0.4)
+        if i==0 or i==1 or i==8 or i==39 or i==50 or i==55:
+            ax.plot_surface(R*x+PP[i, 0], R*y+PP[i, 1], R*z+PP[i, 2], color='red', alpha=0.4)
 
     F, S = [], []
-    for i in range(N):
+    for i in range(1):
         while True:
             pt = G[np.argmin(get_Distance(G, PP[i]))]
-            # IS = np.where(get_Distance(PP[i], pt) - RVir[i] > get_Distance(PP, pt) - RVir)
-            # print (IS)
-            if (get_Distance(PP[i], pt) - RVir[i]) > (get_Distance(PP, pt) - RVir).any():
-                # print (i)
+            tempPP, tempR = np.delete(PP, i, axis=0), np.delete(RVir, i, axis=0)
+            if (get_Distance(PP[i], pt) - RVir[i]) > (get_Distance(tempPP, pt) - tempR).any():
                 break
             f = np.array([])
             while True:
                 idx = np.argmin(get_Distance(G, pt))
-                # print (i)
-                if get_Distance(G[idx], pt) > get_Distance(PP, pt).any():
+                d = get_Distance(G[idx], pt)
+                D = get_Distance(tempPP, pt) - tempR
+                # print (i
+                if d > D.any():
                     break
-                if len(f) > 5 and get_Distance(G[idx], pt) > 5*get_FilamentDistance(f)/len(f):
-                    break
+                #if len(f) > 5 and get_Distance(G[idx], pt) > 6*get_FilamentDistance(f)/len(f):
+                #    break
                 pt = G[idx]
                 f = np.append(f.reshape(f.shape[0], 3), pt.reshape(1, 3), axis=0)
                 G = np.delete(G, idx, axis=0)
