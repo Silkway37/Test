@@ -9,6 +9,24 @@ from scipy.stats import multivariate_normal
 from progressbar import ProgressBar
 
 
+def get_Direction(x, y):
+    return (y-x)
+
+
+def get_Intersection(x1, x2, xC, R):
+    dir = get_Direction(x1, x2)
+    a = np.linalg.norm(dir)**2
+    b = 2*(dir[0]*(x2[0] - xC[0]) + dir[1]*(x2[1] - xC[1]) + dir[2]*(x2[2] - xC[2]))
+    c = get_Distance(x2, xC)**2 - R**2
+
+    D = b**2 - 4*a*c
+
+    if D <= 0:
+        return False
+    else:
+        return True
+
+
 def get_Distance(coord, c):
     d, D = coord.shape, c.shape
     # print (d, D)
@@ -29,6 +47,13 @@ def get_Distance(coord, c):
             print ("Wrong dimensions")
     else:
         print ("Wrong dimensions")
+
+
+def get_FilamentDistance(F):
+    d = 0
+    for i in range(1, len(F)):
+        d += get_Distance(F[i-1], F[i])
+    return d
 
 
 def Create_Mesh(gN, D=2, L=0.25):
@@ -53,6 +78,7 @@ def Get_DensityEstimator(X, G, h=0.01, weights=1):
     print ("Calulating density estimator:")
     for i in pbar(range(gN)):
         c = multivariate_normal.pdf(X, mean=G[i], cov=H)
+
         c = c*weights
         px[i] = np.sum(c)/(len(X)*h**D)
 
@@ -66,7 +92,7 @@ def Get_Ridge(X, G, h=0.01, weights=1):
     D = len(X[0])
     gN = len(G)
     G = find_ridge(X.reshape((len(X), D, 1)), G.reshape((gN, D, 1)),
-                   DD=D, hh=h, eps=1e-06, maxT=1000,
+                   DD=D, hh=h, eps=1e-07, maxT=1000,
                    wweights=weights)
 
     return G.reshape(gN, D)
@@ -99,8 +125,19 @@ def Write_BruteFilaments(sN, gN, h=0.01, D=3, weights=False):
     np.save("Subfil/BruteFilaments_%03d_%dD" % (sN, D), G)
 
 
-def Get_Filaments(sN):
-    SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
+# Write_BruteFilaments(41, 50)
+
+
+def Get_Filaments(sN, M0=300):
+    SnP = "Snap/snap_%03d" % sN                          # Snap Path and file
+    SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)       # Subfind Path and file
+
+    SnH = rs.snapshot_header(SnP)                       # Snap Header
+    h0, z0 = SnH.hubble, SnH.redshift                   # Hubble paramater, Redshift
+    Om_m, Om_l = SnH.omega_m, SnH.omega_l               # Density paramaters
+    E = (Om_m*(1 + z0)**3 + Om_l)**(0.5)
+
+    MLim = M0/E
 
     PP = rs.read_sf_block(SfP, 'GPOS')/10**3                # Galaxy positions (reducing to lower numbers so exp(PP) is not 0)
     RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
@@ -110,7 +147,7 @@ def Get_Filaments(sN):
     G = np.load("Subfil/BruteFilaments_%03d_3D.npy" % sN)/10**3
     print ("Number and dimension of points:", G.shape)
 
-    ID = np.where(MVir > 300)
+    ID = np.where(MVir > MLim)
     N = len(ID[0])
     PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
 
@@ -126,12 +163,10 @@ def Get_Filaments(sN):
         R = RVir[i]
         ID = np.where(get_Distance(G, PP[i]) > R)
         G = G[ID[0]]
-        # print (G.shape)
-        if i==0 or i==1 or i==8 or i==39 or i==50 or i==55:
-            ax.plot_surface(R*x+PP[i, 0], R*y+PP[i, 1], R*z+PP[i, 2], color='red', alpha=0.4)
+        ax.plot_surface(R*x+PP[i, 0], R*y+PP[i, 1], R*z+PP[i, 2], color='red', alpha=0.4)
 
     F, S = [], []
-    for i in range(1):
+    for i in range(N):
         while True:
             pt = G[np.argmin(get_Distance(G, PP[i]))]
             tempPP, tempR = np.delete(PP, i, axis=0), np.delete(RVir, i, axis=0)
@@ -142,17 +177,18 @@ def Get_Filaments(sN):
                 idx = np.argmin(get_Distance(G, pt))
                 d = get_Distance(G[idx], pt)
                 D = get_Distance(tempPP, pt) - tempR
-                # print (i
+                #print (np.min(D))
+                # print (i)
                 if d > D.any():
                     break
-                #if len(f) > 5 and get_Distance(G[idx], pt) > 6*get_FilamentDistance(f)/len(f):
-                #    break
+                if len(f) > 5 and get_Distance(G[idx], pt) > 6*get_FilamentDistance(f)/len(f):
+                    # print (d, np.min(D))
+                    break
                 pt = G[idx]
                 f = np.append(f.reshape(f.shape[0], 3), pt.reshape(1, 3), axis=0)
                 G = np.delete(G, idx, axis=0)
             if f.shape[0] != 0:
-                # print ("Start:", i, "End", np.argmin(get_Distance(PP[:2*N], pt)))
-                # print (i)
+                #if i != np.argmin(get_Distance(PP, pt)):
                 F.append(f)
                 S.append([i, np.argmin(get_Distance(PP, pt))])
 
@@ -165,30 +201,38 @@ def Get_Filaments(sN):
 
     for f in F:
         ax.scatter(f[:, 0], f[:, 1], f[:, 2], s=2, alpha=1)
-    # ax.scatter(G[:, 0], G[:, 1], G[:, 2], s=1, c='black', alpha=0.05)
+    ax.scatter(G[:, 0], G[:, 1], G[:, 2], s=1, c='black', alpha=0.05)
     # plt.axis('off')
-    # plt.savefig('Figures/Test.png')
-    plt.show()
+    plt.savefig('Figures/Test.png')
+    #plt.show()
     plt.clf()
 
     return F, S
 
-
-def get_FilamentDistance(F):
-    d = 0
-    for i in range(1, len(F)):
-        d += get_Distance(F[i-1], F[i])
-    return d
+#for i in range(41,42):
+#    Get_Filaments(i)
 
 
-def FilamentDistance(sN):
+def FilamentDistance(sN, M0=300):
     F, S = Get_Filaments(sN)
-    print (S)
+    SnP = "Snap/snap_%03d" % sN                          # Snap Path and file
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
+
+    SnH = rs.snapshot_header(SnP)                       # Snap Header
+    h0, z0 = SnH.hubble, SnH.redshift                   # Hubble paramater, Redshift
+    Om_m, Om_l = SnH.omega_m, SnH.omega_l               # Density paramaters
+    E = (Om_m*(1 + z0)**3 + Om_l)**(0.5)
+
+    MLim = M0/E
 
     PP = rs.read_sf_block(SfP, 'GPOS')/10**3                # Galaxy positions (reducing to lower numbers so exp(PP) is not 0)
     RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
+    MVir = rs.read_sf_block(SfP, 'MVIR')                    # Mass Virial
     PP -= PP[0]                                             # Shifting system so central galaxy is in center
+
+    ID = np.where(MVir > MLim)
+    N = len(ID[0])
+    PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
 
     D = np.empty(len(F))
     MD = np.empty(len(F))
@@ -199,25 +243,80 @@ def FilamentDistance(sN):
     r = np.zeros(len(F))
 
     for i in range(len(F)):
+        f = F[i]
+        if len(f) == 1:
+            continue
         C1, C2 = S[i, 0], S[i, 1]
         D[i] = get_FilamentDistance(F[i])
         MD[i] = get_Distance(PP[C1], PP[C2]) - RVir[C1] - RVir[C2]
 
-        if np.abs(D[i]-MD[i]) < 1:
+        if np.abs(D[i]-MD[i])/MD[i] < 0.1:
             s[i] = 1
         else:
             c[i] = 1
 
-        if (get_Distance(F[i], PP[C1]).all() > 1.1*RVir[C1]) or (get_Distance(F[i], PP[C2]).all() > 1.1*RVir[C2]):
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        u, v = np.mgrid[0:2*np.pi:40j, 0:np.pi:20j]
+        x = np.cos(u)*np.sin(v)
+        y = np.sin(u)*np.sin(v)
+        z = np.cos(v)
+
+        if get_Intersection(f[1], f[0], PP[C1], RVir[C1]) is False:
             o[i] = 1
+        elif get_Intersection(f[-2], f[-1], PP[C2], RVir[C2]) is False:
+            o[i] = 1
+        # print (C1, C2)
+
+        ax.plot_surface(RVir[C1]*x+PP[C1, 0], RVir[C1]*y+PP[C1, 1], RVir[C1]*z+PP[C1, 2], color='red', alpha=0.4)
+        ax.plot_surface(RVir[C2]*x+PP[C2, 0], RVir[C2]*y+PP[C2, 1], RVir[C2]*z+PP[C2, 2], color='red', alpha=0.4)
+        ax.scatter(f[:,0], f[:,1], f[:,2])
+        plt.show()
+        plt.clf()
 
         if C1 == C2:
             r[i] = 1
     # print (S)
-    print (len(F), np.sum(s), np.sum(c), np.sum(o), np.sum(r))
+    print (len(F), np.sum(s)/len(F), np.sum(c)/len(F), np.sum(o)/len(F), np.sum(r)/len(F))
+
+    IDs = np.where(s > 0)
+    Ds = D[IDs[0]]
+
+    IDc = np.where(c > 0)
+    Dc = D[IDc[0]]
+
+    IDo = np.where(o > 0)
+    Do = D[IDo[0]]
+
+    IDr = np.where(r > 0)
+    Dr = D[IDr[0]]
+
+    DD = [Ds, Dc, Do, Dr]
+
+    w = 0.5
+    bin = np.arange(0, 20+w, w)
+    pb = bin[1:]-w/2
+    c0, b0 = np.histogram(D, bin)
+
+    p = [[] for i in range(4)]
+    bot = 0
+    for i in range(2):
+        c, b = np.histogram(DD[i], bin)
+        p[i] = plt.bar(pb, c, width=w, bottom=bot)
+        bot += c
+
+    #plt.legend((p[3][0], p[2][0], p[1][0], p[0][0]),
+    #           ("Non-pair",
+    #            "Off-centre",
+    #            "Curved",
+    #            "Straight"))
+
+    plt.savefig('Figures/Test.png')
+    plt.clf()
 
 
-FilamentDistance(41)
+# FilamentDistance(41)
 
 
 def Check(sN, bins=50):
@@ -229,11 +328,23 @@ def Check(sN, bins=50):
     T = rs.read_block(SnP, 'HOTT', parttype=0)              # Gas Temperature
 
     RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
-    # MVir = rs.read_sf_block(SfP, 'MVIR')                    # Mass Virial
+    MVir = rs.read_sf_block(SfP, 'MVIR')                    # Mass Virial
+
+    SnH = rs.snapshot_header(SnP)                       # Snap Header
+    h0, z0 = SnH.hubble, SnH.redshift                   # Hubble paramater, Redshift
+    Om_m, Om_l = SnH.omega_m, SnH.omega_l               # Density paramaters
+    E = (Om_m*(1 + z0)**3 + Om_l)**(0.5)
+
+    MLim = M0/E
+
+    ID = np.where(MVir > MLim)
+    N = len(ID[0])
+    PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
+
     GP -= PP[0]
     PP -= PP[0]                                             # Shifting system so central galaxy is in center
-    f = Get_Filaments(41)
-
+    F, S = Get_Filaments(41)
+    f = F[3]
     x, y, z = GP[:, 0], GP[:, 1], GP[:, 2]
     x1, x2 = np.min(f[:, 0]), np.max(f[:, 0])
     y1, y2 = np.min(f[:, 1]), np.max(f[:, 1])
@@ -283,10 +394,10 @@ def Check(sN, bins=50):
     plt.clf()
 
 
-# Check(41)
+Check(41)
 
 
-def Plot_Ridge2D(sN, gN, h=0.01, D=2, ThreeDPlot=False, weights=False):
+def Plot_Ridge2D(sN, gN, h=0.01, D=2, weights=False):
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
 
     PP = rs.read_sf_block(SfP, 'GPOS')                      # Galaxy positions (reducing to lower numbers so exp(PP) is not 0)
@@ -317,7 +428,8 @@ def Plot_Ridge2D(sN, gN, h=0.01, D=2, ThreeDPlot=False, weights=False):
     plt.ylabel('$y[Mpc \\, h^{-1}]$')
     # plt.hist2d(X[:, 0], X[:, 1], bins=100)
     plt.scatter(G[:, 0], G[:, 1], s=0.1, c='red', alpha=0.5)
-    plt.savefig('Figures/2DRidge_%03d.png' % sN)
+    # plt.savefig('Figures/2DRidge_%03d.png' % sN)
+    plt.savefig('Figures/Test.png')
 
 
 def Plot_3DFilament(sN, animation=False):
