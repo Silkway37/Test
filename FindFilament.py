@@ -177,7 +177,7 @@ def Get_Filaments(sN, M0=300):
                 idx = np.argmin(get_Distance(G, pt))
                 d = get_Distance(G[idx], pt)
                 D = get_Distance(tempPP, pt) - tempR
-                #print (np.min(D))
+                # print (np.min(D))
                 # print (i)
                 if d > D.any():
                     break
@@ -188,7 +188,7 @@ def Get_Filaments(sN, M0=300):
                 f = np.append(f.reshape(f.shape[0], 3), pt.reshape(1, 3), axis=0)
                 G = np.delete(G, idx, axis=0)
             if f.shape[0] != 0:
-                #if i != np.argmin(get_Distance(PP, pt)):
+                # if i != np.argmin(get_Distance(PP, pt)):
                 F.append(f)
                 S.append([i, np.argmin(get_Distance(PP, pt))])
 
@@ -204,13 +204,13 @@ def Get_Filaments(sN, M0=300):
     ax.scatter(G[:, 0], G[:, 1], G[:, 2], s=1, c='black', alpha=0.05)
     # plt.axis('off')
     plt.savefig('Figures/Test.png')
-    #plt.show()
+    # plt.show()
     plt.clf()
 
     return F, S
 
-#for i in range(41,42):
-#    Get_Filaments(i)
+
+Get_Filaments(41)
 
 
 def FilamentDistance(sN, M0=300):
@@ -231,7 +231,6 @@ def FilamentDistance(sN, M0=300):
     PP -= PP[0]                                             # Shifting system so central galaxy is in center
 
     ID = np.where(MVir > MLim)
-    N = len(ID[0])
     PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
 
     D = np.empty(len(F))
@@ -271,7 +270,7 @@ def FilamentDistance(sN, M0=300):
 
         ax.plot_surface(RVir[C1]*x+PP[C1, 0], RVir[C1]*y+PP[C1, 1], RVir[C1]*z+PP[C1, 2], color='red', alpha=0.4)
         ax.plot_surface(RVir[C2]*x+PP[C2, 0], RVir[C2]*y+PP[C2, 1], RVir[C2]*z+PP[C2, 2], color='red', alpha=0.4)
-        ax.scatter(f[:,0], f[:,1], f[:,2])
+        ax.scatter(f[:, 0], f[:, 1], f[:, 2])
         plt.show()
         plt.clf()
 
@@ -319,7 +318,7 @@ def FilamentDistance(sN, M0=300):
 # FilamentDistance(41)
 
 
-def Check(sN, bins=50):
+def Check(sN, M0=300, bins=50):
     SnP = "Snap/snap_%03d" % sN                             # Snap Path and file
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
 
@@ -338,7 +337,6 @@ def Check(sN, bins=50):
     MLim = M0/E
 
     ID = np.where(MVir > MLim)
-    N = len(ID[0])
     PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
 
     GP -= PP[0]
