@@ -13,6 +13,49 @@ def get_Direction(x, y):
     return (y-x)
 
 
+def get_Perpendicular(v):
+    if v[0] == v[1] == v[2] == 0:
+        raise ValueError('Error: Direction vector is 0.')
+
+    if v[0] == 0:
+        return np.array([1, 0, 0])
+    if v[1] == 0:
+        return np.array([0, 1, 0])
+    if v[2] == 0:
+        return np.array([0, 0, 1])
+
+    a = np.array([1, 1, -1.0 * (v[0] + v[1]) / v[2]])
+
+    return a/np.linalg.norm(a)
+
+x = np.array([0,0,0])
+y = np.array([3,4,5])
+
+d = get_Direction(x, y)
+d = d/np.linalg.norm(d)
+th = np.arctan(np.sqrt(d[0]**2+d[1]**2)/d[2])
+a = get_Perpendicular(d)
+b = np.cross(d, a)
+
+c = np.array([(x[0]+y[0])/2, (x[1]+y[1])/2, (x[2]+y[2])/2])
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+ax.scatter([x[0], y[0], c[0]], [x[1], y[1], c[1]], [x[2], y[2], c[2]])
+ax.plot([x[0], y[0]], [x[1], y[1]], [x[2], y[2]])
+
+fi = np.linspace(0, 2*np.pi, 100)
+r = 1
+
+for i in range(11):
+    xx = x[0] + r*a[0]*np.cos(fi) + r*b[0]*np.sin(fi) + i*(y[0]-x[0])/10
+    yy = x[1] + r*a[1]*np.cos(fi) + r*b[1]*np.sin(fi) + i*(y[1]-x[1])/10
+    zz = x[2] + r*a[2]*np.cos(fi) + r*b[2]*np.sin(fi) + i*(y[2]-x[2])/10
+
+    ax.plot(xx,yy,zz)
+plt.show()
+
 def get_Intersection(x1, x2, xC, R):
     dir = get_Direction(x1, x2)
     a = np.linalg.norm(dir)**2
@@ -210,7 +253,7 @@ def Get_Filaments(sN, M0=300):
     return F, S
 
 
-Get_Filaments(41)
+# Get_Filaments(41)
 
 
 def FilamentDistance(sN, M0=300):
@@ -344,6 +387,7 @@ def Check(sN, M0=300, bins=50):
     F, S = Get_Filaments(41)
     f = F[3]
     x, y, z = GP[:, 0], GP[:, 1], GP[:, 2]
+    """
     x1, x2 = np.min(f[:, 0]), np.max(f[:, 0])
     y1, y2 = np.min(f[:, 1]), np.max(f[:, 1])
     z1, z2 = np.min(f[:, 2]), np.max(f[:, 2])
@@ -358,7 +402,14 @@ def Check(sN, M0=300, bins=50):
                   & (T < 10**7))
     x, y, z = x[ID[0]], y[ID[0]], z[ID[0]]
     T = T[ID[0]]
+    """
 
+    for i in range(len(f)):
+        xc, yc, zc = f[i, 0], f[i, 1], f[i, 2]
+        ID = np.where(x)
+
+
+    """
     CW, xm, ym = np.histogram2d(x, y, bins=bins,           # With weights
                                 normed=False, weights=T)
 
@@ -390,9 +441,9 @@ def Check(sN, M0=300, bins=50):
     # plt.scatter(x, y, s=1)
     plt.savefig('Figures/Test.png')
     plt.clf()
+    """
 
-
-Check(41)
+# Check(41)
 
 
 def Plot_Ridge2D(sN, gN, h=0.01, D=2, weights=False):
