@@ -384,9 +384,9 @@ def Check(sN, M0=300, bins=50):
     T = T[ID[0]]
     """
 
-    for i in range(len(f)):
-        xc, yc, zc = f[i, 0], f[i, 1], f[i, 2]
-        ID = np.where(x)
+    for i in range(len(f)-1):
+        f1, f2 = f[i], f[i+1]
+        print (get_Direction(f1, f2))
 
 
     """
@@ -420,7 +420,7 @@ def Check(sN, M0=300, bins=50):
     plt.clf()
     """
 
-# Check(41)
+Check(41)
 
 
 def Plot_Ridge2D(sN, gN, h=0.01, D=2, weights=False):
