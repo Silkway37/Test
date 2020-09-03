@@ -10,7 +10,7 @@ from progressbar import ProgressBar
 
 
 def get_Direction(x, y):
-    return (y-x)
+    return (y-x)/np.linalg.norm(y-x)
 
 
 def get_Perpendicular(v):
@@ -24,37 +24,26 @@ def get_Perpendicular(v):
     if v[2] == 0:
         return np.array([0, 0, 1])
 
-    a = np.array([1, 1, -1.0 * (v[0] + v[1]) / v[2]])
+    a = np.array([0.5, 0.5, -0.5*(v[0] + v[1])/v[2]])
 
     return a/np.linalg.norm(a)
 
-x = np.array([0,0,0])
-y = np.array([3,4,5])
 
-d = get_Direction(x, y)
-d = d/np.linalg.norm(d)
-th = np.arctan(np.sqrt(d[0]**2+d[1]**2)/d[2])
-a = get_Perpendicular(d)
-b = np.cross(d, a)
+def get_CylinderArea(x, y):
+    d = get_Direction(x, y)
+    a = get_Perpendicular(d)
+    b = np.cross(a, d)
 
-c = np.array([(x[0]+y[0])/2, (x[1]+y[1])/2, (x[2]+y[2])/2])
+    c = (x + y)/2
 
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
+    fi = np.linspace(0, 2*np.pi, 100)
+    r = 1
 
-ax.scatter([x[0], y[0], c[0]], [x[1], y[1], c[1]], [x[2], y[2], c[2]])
-ax.plot([x[0], y[0]], [x[1], y[1]], [x[2], y[2]])
+    for i in range(11):
+        xx = x[0] + r*a[0]*np.cos(fi) + r*b[0]*np.sin(fi) + i*(y[0]-x[0])/10
+        yy = x[1] + r*a[1]*np.cos(fi) + r*b[1]*np.sin(fi) + i*(y[1]-x[1])/10
+        zz = x[2] + r*a[2]*np.cos(fi) + r*b[2]*np.sin(fi) + i*(y[2]-x[2])/10
 
-fi = np.linspace(0, 2*np.pi, 100)
-r = 1
-
-for i in range(11):
-    xx = x[0] + r*a[0]*np.cos(fi) + r*b[0]*np.sin(fi) + i*(y[0]-x[0])/10
-    yy = x[1] + r*a[1]*np.cos(fi) + r*b[1]*np.sin(fi) + i*(y[1]-x[1])/10
-    zz = x[2] + r*a[2]*np.cos(fi) + r*b[2]*np.sin(fi) + i*(y[2]-x[2])/10
-
-    ax.plot(xx,yy,zz)
-plt.show()
 
 def get_Intersection(x1, x2, xC, R):
     dir = get_Direction(x1, x2)
@@ -168,16 +157,12 @@ def Write_BruteFilaments(sN, gN, h=0.01, D=3, weights=False):
     np.save("Subfil/BruteFilaments_%03d_%dD" % (sN, D), G)
 
 
-# Write_BruteFilaments(41, 50)
-
-
 def Get_Filaments(sN, M0=300):
     SnP = "Snap/snap_%03d" % sN                          # Snap Path and file
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)       # Subfind Path and file
 
     SnH = rs.snapshot_header(SnP)                       # Snap Header
-    h0, z0 = SnH.hubble, SnH.redshift                   # Hubble paramater, Redshift
-    Om_m, Om_l = SnH.omega_m, SnH.omega_l               # Density paramaters
+    z0, Om_m, Om_l = SnH.redshift, SnH.omega_m, SnH.omega_l  # Redshift, Density paramaters
     E = (Om_m*(1 + z0)**3 + Om_l)**(0.5)
 
     MLim = M0/E
@@ -253,17 +238,13 @@ def Get_Filaments(sN, M0=300):
     return F, S
 
 
-# Get_Filaments(41)
-
-
 def FilamentDistance(sN, M0=300):
     F, S = Get_Filaments(sN)
     SnP = "Snap/snap_%03d" % sN                          # Snap Path and file
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
 
     SnH = rs.snapshot_header(SnP)                       # Snap Header
-    h0, z0 = SnH.hubble, SnH.redshift                   # Hubble paramater, Redshift
-    Om_m, Om_l = SnH.omega_m, SnH.omega_l               # Density paramaters
+    z0, Om_m, Om_l = SnH.redshift, SnH.omega_m, SnH.omega_l  # Redshift, Density paramaters
     E = (Om_m*(1 + z0)**3 + Om_l)**(0.5)
 
     MLim = M0/E
@@ -348,7 +329,7 @@ def FilamentDistance(sN, M0=300):
         p[i] = plt.bar(pb, c, width=w, bottom=bot)
         bot += c
 
-    #plt.legend((p[3][0], p[2][0], p[1][0], p[0][0]),
+    # plt.legend((p[3][0], p[2][0], p[1][0], p[0][0]),
     #           ("Non-pair",
     #            "Off-centre",
     #            "Curved",
@@ -373,8 +354,7 @@ def Check(sN, M0=300, bins=50):
     MVir = rs.read_sf_block(SfP, 'MVIR')                    # Mass Virial
 
     SnH = rs.snapshot_header(SnP)                       # Snap Header
-    h0, z0 = SnH.hubble, SnH.redshift                   # Hubble paramater, Redshift
-    Om_m, Om_l = SnH.omega_m, SnH.omega_l               # Density paramaters
+    z0, Om_m, Om_l = SnH.redshift, SnH.omega_m, SnH.omega_l  # Redshift, Density paramaters
     E = (Om_m*(1 + z0)**3 + Om_l)**(0.5)
 
     MLim = M0/E
@@ -412,12 +392,9 @@ def Check(sN, M0=300, bins=50):
     """
     CW, xm, ym = np.histogram2d(x, y, bins=bins,           # With weights
                                 normed=False, weights=T)
-
     CC, xm, ym = np.histogram2d(x, y, bins=bins,           # Without weights
                                 normed=False)
-
     xm, ym = np.meshgrid(xm, ym, indexing='ij')         # Create meshgrid
-
     fig, ax = plt.subplots(1, 1)
     pcm = ax.pcolormesh(xm, ym, CW/CC,
                         cmap=plt.cm.jet,
