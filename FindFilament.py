@@ -48,7 +48,7 @@ def get_CylinderArea(x, y):
 def get_Intersection(x1, x2, xC, R):
     dir = get_Direction(x1, x2)
     a = np.linalg.norm(dir)**2
-    b = 2*(dir[0]*(x2[0] - xC[0]) + dir[1]*(x2[1] - xC[1]) + dir[2]*(x2[2] - xC[2]))
+    b = 2*np.dot(dir, x2 - xC)
     c = get_Distance(x2, xC)**2 - R**2
 
     D = b**2 - 4*a*c
@@ -420,7 +420,7 @@ def Check(sN, M0=300, bins=50):
     plt.clf()
     """
 
-Check(41)
+# Check(41)
 
 
 def Plot_Ridge2D(sN, gN, h=0.01, D=2, weights=False):
@@ -488,3 +488,25 @@ def Plot_3DFilament(sN, animation=False):
 
     plt.savefig('Figures/3DFilament_%03d.png' % sN)
     plt.clf()
+
+
+x = np.array([1, 0, 2])
+y = np.array([2, -1, 3])
+z = np.array([-1, -2, 1])
+
+d = get_Direction(x, y)
+
+t = np.dot((x-z), d)
+
+tmax = (y[0] - x[0])/d[0]
+
+d1 = get_Direction(z, x + t*d)
+
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+data = np.array([x, y, z, x + t*d])
+ax.scatter(data[:, 0], data[:, 1], data[:, 2])
+ax.quiver(x[0], x[1], x[2], d[0], d[1], d[2])
+ax.quiver(z[0], z[1], z[2], d1[0], d1[1], d1[2])
+plt.show()
