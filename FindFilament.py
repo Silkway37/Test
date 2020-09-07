@@ -386,7 +386,17 @@ def Check(sN, M0=300, bins=50):
 
     for i in range(len(f)-1):
         f1, f2 = f[i], f[i+1]
-        print (get_Direction(f1, f2))
+        d = get_Direction(f1, f2)
+        tmax = (f2[0] - f1[0])/d[0]
+        f1_GP = f1 - GP
+        t = np.dot(f1_GP, d)
+        dmin = np.linalg.norm(f1_GP - np.transpose(t*d[:, np.newaxis]), axis=1)
+        IDG = np.where((t < tmax) & (t > 0) & (dmin < 5))
+        GPf = GP[IDG[0]]
+        plt.scatter(GPf[:, 0], GPf[:, 1])
+        plt.plot(f[:, 0], f[:, 1])
+        plt.show()
+        plt.clf()
 
 
     """
@@ -420,7 +430,8 @@ def Check(sN, M0=300, bins=50):
     plt.clf()
     """
 
-# Check(41)
+
+Check(41)
 
 
 def Plot_Ridge2D(sN, gN, h=0.01, D=2, weights=False):
@@ -488,25 +499,3 @@ def Plot_3DFilament(sN, animation=False):
 
     plt.savefig('Figures/3DFilament_%03d.png' % sN)
     plt.clf()
-
-
-x = np.array([1, 0, 2])
-y = np.array([2, -1, 3])
-z = np.array([-1, -2, 1])
-
-d = get_Direction(x, y)
-
-t = np.dot((x-z), d)
-
-tmax = (y[0] - x[0])/d[0]
-
-d1 = get_Direction(z, x + t*d)
-
-
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-data = np.array([x, y, z, x + t*d])
-ax.scatter(data[:, 0], data[:, 1], data[:, 2])
-ax.quiver(x[0], x[1], x[2], d[0], d[1], d[2])
-ax.quiver(z[0], z[1], z[2], d1[0], d1[1], d1[2])
-plt.show()
