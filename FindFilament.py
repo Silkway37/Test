@@ -29,22 +29,6 @@ def get_Perpendicular(v):
     return a/np.linalg.norm(a)
 
 
-def get_CylinderArea(x, y):
-    d = get_Direction(x, y)
-    a = get_Perpendicular(d)
-    b = np.cross(a, d)
-
-    c = (x + y)/2
-
-    fi = np.linspace(0, 2*np.pi, 100)
-    r = 1
-
-    for i in range(11):
-        xx = x[0] + r*a[0]*np.cos(fi) + r*b[0]*np.sin(fi) + i*(y[0]-x[0])/10
-        yy = x[1] + r*a[1]*np.cos(fi) + r*b[1]*np.sin(fi) + i*(y[1]-x[1])/10
-        zz = x[2] + r*a[2]*np.cos(fi) + r*b[2]*np.sin(fi) + i*(y[2]-x[2])/10
-
-
 def get_Intersection(x1, x2, xC, R):
     dir = get_Direction(x1, x2)
     a = np.linalg.norm(dir)**2
@@ -178,7 +162,7 @@ def Get_Filaments(sN, M0=300):
     ID = np.where(MVir > MLim)
     N = len(ID[0])
     PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
-
+    """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -186,12 +170,12 @@ def Get_Filaments(sN, M0=300):
     x = np.cos(u)*np.sin(v)
     y = np.sin(u)*np.sin(v)
     z = np.cos(v)
-
+    """
     for i in range(N):
         R = RVir[i]
         ID = np.where(get_Distance(G, PP[i]) > R)
         G = G[ID[0]]
-        ax.plot_surface(R*x+PP[i, 0], R*y+PP[i, 1], R*z+PP[i, 2], color='red', alpha=0.4)
+        # ax.plot_surface(R*x+PP[i, 0], R*y+PP[i, 1], R*z+PP[i, 2], color='red', alpha=0.4)
 
     F, S = [], []
     for i in range(2):
@@ -221,7 +205,7 @@ def Get_Filaments(sN, M0=300):
                 S.append([i, np.argmin(get_Distance(PP, pt))])
 
     F, S = np.array(F), np.array(S)
-
+    """
     # print (F)
     ax.set_xlim([-15, 15])
     ax.set_ylim([-15, 15])
@@ -234,7 +218,7 @@ def Get_Filaments(sN, M0=300):
     plt.savefig('Figures/Test.png')
     # plt.show()
     plt.clf()
-
+    """
     return F, S
 
 
@@ -347,58 +331,74 @@ def Plot_RadialProfile(sN, M0=300):
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
 
     PP = rs.read_sf_block(SfP, 'GPOS')/10**3                # Galaxy positions (reducing to lower numbers so exp(PP) is not 0)
-    GP = rs.read_block(SnP, 'POS', parttype=1)/10**3        # Gas Position
+    GP = rs.read_block(SnP, 'POS', parttype=0)/10**3        # Gas Position
     T = rs.read_block(SnP, 'HOTT', parttype=0)              # Gas Temperature
 
     RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
     MVir = rs.read_sf_block(SfP, 'MVIR')                    # Mass Virial
 
     SnH = rs.snapshot_header(SnP)                           # Snap Header
-    z0, Om_m, Om_l = SnH.redshift, SnH.omega_m, SnH.omega_l # Redshift, Density paramaters
+    z0, Om_m, Om_l = SnH.redshift, SnH.omega_m, SnH.omega_l  # Redshift, Density paramaters
     E = (Om_m*(1 + z0)**3 + Om_l)**(0.5)
     MLim = M0/E
 
     ID = np.where(MVir > MLim)
     PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
 
-    GP -= PP[0]
-    PP -= PP[0]                                             # Shifting system so central galaxy is in center
+    GP, PP = GP - PP[0], PP - PP[0]                         # Shifting system so central galaxy is in center
     F, S = Get_Filaments(41)
 
-    #for i in range(10):
+    # for i in range(10):
     #    print (i, S[i], get_FilamentDistance(F[i]))
-    f = F[3]
+    f = F[2]
+    print (GP.shape)
+    ID = np.where((get_Distance(GP, PP[S[2, 0]]) > RVir[S[2, 0]])
+                  & (get_Distance(GP, PP[S[2, 1]]) > RVir[S[2, 1]])
+                  & (GP[:, 0] > np.min(f[:, 0])) - 1 & (GP[:, 0] < np.max(f[:, 0]) + 1)
+                  & (GP[:, 1] > np.min(f[:, 1])) - 1 & (GP[:, 1] < np.max(f[:, 1]) + 1)
+                  & (GP[:, 2] > np.min(f[:, 2])) - 1 & (GP[:, 2] < np.max(f[:, 2]) + 1))
+    GP = GP[ID[0]]
+    print (GP.shape)
     for i in range(len(f)-1):
-        print (i)
         f1, f2 = f[i], f[i+1]
-        print (f1, f2)
         dir = get_Direction(f1, f2)
         tmax = (f2[0] - f1[0])/dir[0]
+        print (f1, f2)
+        print (f1[0] + dir[0]*tmax, f2[0])
+        print (f1[1] + dir[1]*tmax, f2[1])
+        print (f1[2] + dir[2]*tmax, f2[2])
         f1_GP = f1 - GP
         t = np.dot(f1_GP, dir)
         d = np.linalg.norm(f1_GP - np.transpose(t*dir[:, np.newaxis]), axis=1)
         ID = np.where((t < tmax) & (t > 0) & (d < 1))
-        if i==0:
+        if i == 0:
             GPf = GP[ID[0]]
             dis = d[ID[0]]
+            #print (len(ID[0]))
         else:
             GPf = np.append(GPf, GP[ID[0]], axis=0)
             dis = np.append(dis, d[ID[0]])
-        GP = np.delete(GP, GP[ID[0]], axis=0)
-        #print (GPf.shape)
+            print (len(ID[0]))
+            #print (t, tmax)
+            #plt.hist(t)
+            #plt.show()
+        GP = np.delete(GP, ID[0], axis=0)
+        # print (GPf.shape)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     ax.scatter(GPf[:, 0], GPf[:, 1], GPf[:, 2], s=1)
     ax.plot(f[:, 0], f[:, 1], f[:, 2], color='red')
+    ax.scatter(f[:, 0], f[:, 1], f[:, 2], color='red')
     ax.set_xlim([-2, 3])
-    ax.set_ylim([1,6])
-    ax.set_zlim([-1,4])
-    #print (dis.shape)
-    #plt.hist(dis)
+    ax.set_ylim([1, 6])
+    ax.set_zlim([-1, 4])
+    # print (dis.shape)
+    # plt.hist(dis)
     print (get_FilamentDistance(f))
     plt.show()
+
 
 Plot_RadialProfile(41)
 
