@@ -194,7 +194,7 @@ def Get_Filaments(sN, M0=300):
         ax.plot_surface(R*x+PP[i, 0], R*y+PP[i, 1], R*z+PP[i, 2], color='red', alpha=0.4)
 
     F, S = [], []
-    for i in range(N):
+    for i in range(2):
         while True:
             pt = G[np.argmin(get_Distance(G, PP[i]))]
             tempPP, tempR = np.delete(PP, i, axis=0), np.delete(RVir, i, axis=0)
@@ -342,21 +342,20 @@ def FilamentDistance(sN, M0=300):
 # FilamentDistance(41)
 
 
-def Check(sN, M0=300, bins=50):
+def Plot_RadialProfile(sN, M0=300):
     SnP = "Snap/snap_%03d" % sN                             # Snap Path and file
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
 
     PP = rs.read_sf_block(SfP, 'GPOS')/10**3                # Galaxy positions (reducing to lower numbers so exp(PP) is not 0)
-    GP = rs.read_block(SnP, 'POS', parttype=0)/10**3        # Gas Position
+    GP = rs.read_block(SnP, 'POS', parttype=1)/10**3        # Gas Position
     T = rs.read_block(SnP, 'HOTT', parttype=0)              # Gas Temperature
 
     RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
     MVir = rs.read_sf_block(SfP, 'MVIR')                    # Mass Virial
 
-    SnH = rs.snapshot_header(SnP)                       # Snap Header
-    z0, Om_m, Om_l = SnH.redshift, SnH.omega_m, SnH.omega_l  # Redshift, Density paramaters
+    SnH = rs.snapshot_header(SnP)                           # Snap Header
+    z0, Om_m, Om_l = SnH.redshift, SnH.omega_m, SnH.omega_l # Redshift, Density paramaters
     E = (Om_m*(1 + z0)**3 + Om_l)**(0.5)
-
     MLim = M0/E
 
     ID = np.where(MVir > MLim)
@@ -365,73 +364,43 @@ def Check(sN, M0=300, bins=50):
     GP -= PP[0]
     PP -= PP[0]                                             # Shifting system so central galaxy is in center
     F, S = Get_Filaments(41)
+
+    #for i in range(10):
+    #    print (i, S[i], get_FilamentDistance(F[i]))
     f = F[3]
-    x, y, z = GP[:, 0], GP[:, 1], GP[:, 2]
-    """
-    x1, x2 = np.min(f[:, 0]), np.max(f[:, 0])
-    y1, y2 = np.min(f[:, 1]), np.max(f[:, 1])
-    z1, z2 = np.min(f[:, 2]), np.max(f[:, 2])
-    print (x1, x2, y1, y2, z1, z2)
-    ID = np.where((x > x1 - np.abs(x1)/2)                  # Get stars in frame
-                  & (x < x2 + np.abs(x2)/2)
-                  & (y > y1 - np.abs(y1)/2)
-                  & (y < y2 + np.abs(y2)/2)
-                  & (z > z1 - np.abs(z1)/2)
-                  & (z < z2 + np.abs(z2)/2)
-                  & (T > 10**5)
-                  & (T < 10**7))
-    x, y, z = x[ID[0]], y[ID[0]], z[ID[0]]
-    T = T[ID[0]]
-    """
-
     for i in range(len(f)-1):
+        print (i)
         f1, f2 = f[i], f[i+1]
-        d = get_Direction(f1, f2)
-        tmax = (f2[0] - f1[0])/d[0]
+        print (f1, f2)
+        dir = get_Direction(f1, f2)
+        tmax = (f2[0] - f1[0])/dir[0]
         f1_GP = f1 - GP
-        t = np.dot(f1_GP, d)
-        dmin = np.linalg.norm(f1_GP - np.transpose(t*d[:, np.newaxis]), axis=1)
-        IDG = np.where((t < tmax) & (t > 0) & (dmin < 5))
-        GPf = GP[IDG[0]]
-        plt.scatter(GPf[:, 0], GPf[:, 1])
-        plt.plot(f[:, 0], f[:, 1])
-        plt.show()
-        plt.clf()
+        t = np.dot(f1_GP, dir)
+        d = np.linalg.norm(f1_GP - np.transpose(t*dir[:, np.newaxis]), axis=1)
+        ID = np.where((t < tmax) & (t > 0) & (d < 1))
+        if i==0:
+            GPf = GP[ID[0]]
+            dis = d[ID[0]]
+        else:
+            GPf = np.append(GPf, GP[ID[0]], axis=0)
+            dis = np.append(dis, d[ID[0]])
+        GP = np.delete(GP, GP[ID[0]], axis=0)
+        #print (GPf.shape)
 
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
 
-    """
-    CW, xm, ym = np.histogram2d(x, y, bins=bins,           # With weights
-                                normed=False, weights=T)
-    CC, xm, ym = np.histogram2d(x, y, bins=bins,           # Without weights
-                                normed=False)
-    xm, ym = np.meshgrid(xm, ym, indexing='ij')         # Create meshgrid
-    fig, ax = plt.subplots(1, 1)
-    pcm = ax.pcolormesh(xm, ym, CW/CC,
-                        cmap=plt.cm.jet,
-                        vmin=10**5, vmax=10**7)                      # Plot
-    cbar = fig.colorbar(pcm, ax=ax, ticks=[10**5, 1*10**6, 2*10**6,
-                                           3*10**6, 4*10**6,
-                                           5*10**6, 6*10**6,
-                                           7*10**6, 8*10**6,
-                                           9*10**6, 10**7])
-    cbar.ax.set_yticklabels(['$0.1$', '$1$', '$2$', '$3$', '$4$',
-                             '$5$', '$6$', '$7$', '$8$', '$9$', '$10$'])
-    cbar.set_label('$T\\,[10^{6}\\cdot K]$', rotation=270, labelpad=15)
-    th = np.linspace(0, 2*np.pi, 100)
-    ax.plot(PP[0, 0]+RVir[0]*np.cos(th), PP[0, 1]+RVir[0]*np.sin(th), color='black')
-    ax.plot(PP[8, 0]+RVir[8]*np.cos(th), PP[8, 1]+RVir[8]*np.sin(th), color='black')
-    ax.set_xlim([x1 - np.abs(x1), x2 + np.abs(x2)])
-    ax.set_ylim([y1 - np.abs(y1), y2 + np.abs(y1)])
-    # ax.axis('off')
-    plt.tight_layout()
-    plt.scatter(f[:, 0], f[:, 1])
-    # plt.scatter(x, y, s=1)
-    plt.savefig('Figures/Test.png')
-    plt.clf()
-    """
+    ax.scatter(GPf[:, 0], GPf[:, 1], GPf[:, 2], s=1)
+    ax.plot(f[:, 0], f[:, 1], f[:, 2], color='red')
+    ax.set_xlim([-2, 3])
+    ax.set_ylim([1,6])
+    ax.set_zlim([-1,4])
+    #print (dis.shape)
+    #plt.hist(dis)
+    print (get_FilamentDistance(f))
+    plt.show()
 
-
-Check(41)
+Plot_RadialProfile(41)
 
 
 def Plot_Ridge2D(sN, gN, h=0.01, D=2, weights=False):
