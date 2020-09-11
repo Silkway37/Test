@@ -165,7 +165,6 @@ def Get_Filaments(sN, M0=300):
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-
     u, v = np.mgrid[0:2*np.pi:40j, 0:np.pi:20j]
     x = np.cos(u)*np.sin(v)
     y = np.sin(u)*np.sin(v)
@@ -210,7 +209,6 @@ def Get_Filaments(sN, M0=300):
     ax.set_xlim([-15, 15])
     ax.set_ylim([-15, 15])
     ax.set_zlim([-15, 15])
-
     for f in F:
         ax.scatter(f[:, 0], f[:, 1], f[:, 2], s=2, alpha=1)
     ax.scatter(G[:, 0], G[:, 1], G[:, 2], s=1, c='black', alpha=0.05)
@@ -354,34 +352,29 @@ def Plot_RadialProfile(sN, M0=300):
     print (GP.shape)
     ID = np.where((get_Distance(GP, PP[S[2, 0]]) > RVir[S[2, 0]])
                   & (get_Distance(GP, PP[S[2, 1]]) > RVir[S[2, 1]])
-                  & (GP[:, 0] > np.min(f[:, 0])) - 1 & (GP[:, 0] < np.max(f[:, 0]) + 1)
-                  & (GP[:, 1] > np.min(f[:, 1])) - 1 & (GP[:, 1] < np.max(f[:, 1]) + 1)
-                  & (GP[:, 2] > np.min(f[:, 2])) - 1 & (GP[:, 2] < np.max(f[:, 2]) + 1))
+                  & (GP[:, 0] > np.min(f[:, 0]) - 1) & (GP[:, 0] < np.max(f[:, 0]) + 1)
+                  & (GP[:, 1] > np.min(f[:, 1]) - 1) & (GP[:, 1] < np.max(f[:, 1]) + 1)
+                  & (GP[:, 2] > np.min(f[:, 2]) - 1) & (GP[:, 2] < np.max(f[:, 2]) + 1))
     GP = GP[ID[0]]
     print (GP.shape)
+
     for i in range(len(f)-1):
         f1, f2 = f[i], f[i+1]
         dir = get_Direction(f1, f2)
         tmax = (f2[0] - f1[0])/dir[0]
-        print (f1, f2)
-        print (f1[0] + dir[0]*tmax, f2[0])
-        print (f1[1] + dir[1]*tmax, f2[1])
-        print (f1[2] + dir[2]*tmax, f2[2])
         f1_GP = f1 - GP
         t = np.dot(f1_GP, dir)
         d = np.linalg.norm(f1_GP - np.transpose(t*dir[:, np.newaxis]), axis=1)
-        ID = np.where((t < tmax) & (t > 0) & (d < 1))
+        ID = np.where((t > - tmax) & (t < 0) & (d < 1))
+        print (t.size, len(ID[0]), tmax)
+        #plt.hist(t[ID[0]])
+        #plt.show()
         if i == 0:
             GPf = GP[ID[0]]
             dis = d[ID[0]]
-            #print (len(ID[0]))
         else:
             GPf = np.append(GPf, GP[ID[0]], axis=0)
             dis = np.append(dis, d[ID[0]])
-            print (len(ID[0]))
-            #print (t, tmax)
-            #plt.hist(t)
-            #plt.show()
         GP = np.delete(GP, ID[0], axis=0)
         # print (GPf.shape)
 
@@ -389,11 +382,11 @@ def Plot_RadialProfile(sN, M0=300):
     ax = fig.add_subplot(111, projection='3d')
 
     ax.scatter(GPf[:, 0], GPf[:, 1], GPf[:, 2], s=1)
-    ax.plot(f[:, 0], f[:, 1], f[:, 2], color='red')
-    ax.scatter(f[:, 0], f[:, 1], f[:, 2], color='red')
-    ax.set_xlim([-2, 3])
+    ax.plot(f[:4, 0], f[:4, 1], f[:4, 2], color='red')
+    ax.scatter(f[:4, 0], f[:4, 1], f[:4, 2], color='red')
+    ax.set_xlim([-2, 2])
     ax.set_ylim([1, 6])
-    ax.set_zlim([-1, 4])
+    ax.set_zlim([-1, 5])
     # print (dis.shape)
     # plt.hist(dis)
     print (get_FilamentDistance(f))
