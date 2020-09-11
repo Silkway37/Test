@@ -4,7 +4,7 @@ from scms import find_ridge
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-# from matplotlib.colors import LogNorm
+from matplotlib.colors import LogNorm
 from scipy.stats import multivariate_normal
 from progressbar import ProgressBar
 
@@ -324,7 +324,7 @@ def FilamentDistance(sN, M0=300):
 # FilamentDistance(41)
 
 
-def Plot_RadialProfile(sN, M0=300):
+def Plot_RadialProfile(sN, M0=300, rmax=1):
     SnP = "Snap/snap_%03d" % sN                             # Snap Path and file
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
 
@@ -346,38 +346,40 @@ def Plot_RadialProfile(sN, M0=300):
     GP, PP = GP - PP[0], PP - PP[0]                         # Shifting system so central galaxy is in center
     F, S = Get_Filaments(41)
 
-    # for i in range(10):
-    #    print (i, S[i], get_FilamentDistance(F[i]))
     f = F[2]
-    print (GP.shape)
     ID = np.where((get_Distance(GP, PP[S[2, 0]]) > RVir[S[2, 0]])
                   & (get_Distance(GP, PP[S[2, 1]]) > RVir[S[2, 1]])
-                  & (GP[:, 0] > np.min(f[:, 0]) - 1) & (GP[:, 0] < np.max(f[:, 0]) + 1)
-                  & (GP[:, 1] > np.min(f[:, 1]) - 1) & (GP[:, 1] < np.max(f[:, 1]) + 1)
-                  & (GP[:, 2] > np.min(f[:, 2]) - 1) & (GP[:, 2] < np.max(f[:, 2]) + 1))
-    GP = GP[ID[0]]
-    print (GP.shape)
+                  & (GP[:, 0] > np.min(f[:, 0]) - rmax) & (GP[:, 0] < np.max(f[:, 0]) + rmax)
+                  & (GP[:, 1] > np.min(f[:, 1]) - rmax) & (GP[:, 1] < np.max(f[:, 1]) + rmax)
+                  & (GP[:, 2] > np.min(f[:, 2]) - rmax) & (GP[:, 2] < np.max(f[:, 2]) + rmax))
+    GP, T = GP[ID[0]], T[ID[0]]
+
+    long = 0
+    ID = np.array([])
 
     for i in range(len(f)-1):
         f1, f2 = f[i], f[i+1]
         dir = get_Direction(f1, f2)
         tmax = (f2[0] - f1[0])/dir[0]
         f1_GP = f1 - GP
-        t = np.dot(f1_GP, dir)
+        t = - np.dot(f1_GP, dir)
         d = np.linalg.norm(f1_GP - np.transpose(t*dir[:, np.newaxis]), axis=1)
-        ID = np.where((t > - tmax) & (t < 0) & (d < 1))
-        print (t.size, len(ID[0]), tmax)
-        #plt.hist(t[ID[0]])
-        #plt.show()
+        ID = np.where((t < tmax) & (t > 0) & (d < rmax))
         if i == 0:
             GPf = GP[ID[0]]
-            dis = d[ID[0]]
+            Tf = T[ID[0]]
+            per_dis = d[ID[0]]
+            long_dis = long + t[ID[0]]
         else:
             GPf = np.append(GPf, GP[ID[0]], axis=0)
-            dis = np.append(dis, d[ID[0]])
+            Tf = np.append(Tf, T[ID[0]])
+            per_dis = np.append(per_dis, d[ID[0]])
+            long_dis = np.append(long_dis, long + t[ID[0]])
         GP = np.delete(GP, ID[0], axis=0)
-        # print (GPf.shape)
+        T = np.delete(T, ID[0])
+        long += get_Distance(f1, f2)
 
+    """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -390,10 +392,13 @@ def Plot_RadialProfile(sN, M0=300):
     # print (dis.shape)
     # plt.hist(dis)
     print (get_FilamentDistance(f))
+    """
+    plt.hist2d(long_dis/get_FilamentDistance(f), per_dis, bins=[20, 20])
+    # plt.hist(per_dis, range=[0, 1], bins=20)
     plt.show()
 
 
-Plot_RadialProfile(41)
+Plot_RadialProfile(41, rmax=1)
 
 
 def Plot_Ridge2D(sN, gN, h=0.01, D=2, weights=False):
