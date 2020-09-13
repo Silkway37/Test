@@ -382,7 +382,6 @@ def Plot_RadialProfile(sN, M0=300, rmax=1):
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-
     ax.scatter(GPf[:, 0], GPf[:, 1], GPf[:, 2], s=1)
     ax.plot(f[:4, 0], f[:4, 1], f[:4, 2], color='red')
     ax.scatter(f[:4, 0], f[:4, 1], f[:4, 2], color='red')
