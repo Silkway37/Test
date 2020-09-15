@@ -324,13 +324,14 @@ def FilamentDistance(sN, M0=300):
 # FilamentDistance(41)
 
 
-def Plot_RadialProfile(sN, M0=300, rmax=1):
+def Plot_RadialProfile(sN, M0=300, rmax=1, parttype=0):
     SnP = "Snap/snap_%03d" % sN                             # Snap Path and file
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
 
     PP = rs.read_sf_block(SfP, 'GPOS')/10**3                # Galaxy positions (reducing to lower numbers so exp(PP) is not 0)
-    GP = rs.read_block(SnP, 'POS', parttype=0)/10**3        # Gas Position
-    T = rs.read_block(SnP, 'HOTT', parttype=0)              # Gas Temperature
+    GP = rs.read_block(SnP, 'POS', parttype=parttype)/10**3 # Particle Position
+    if parttype == 0:
+        T = rs.read_block(SnP, 'TEMP', parttype=parttype)   # Gas Temperature
 
     RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
     MVir = rs.read_sf_block(SfP, 'MVIR')                    # Mass Virial
@@ -346,13 +347,16 @@ def Plot_RadialProfile(sN, M0=300, rmax=1):
     GP, PP = GP - PP[0], PP - PP[0]                         # Shifting system so central galaxy is in center
     F, S = Get_Filaments(41)
 
-    f = F[2]
+    f = F[3]
     ID = np.where((get_Distance(GP, PP[S[2, 0]]) > RVir[S[2, 0]])
                   & (get_Distance(GP, PP[S[2, 1]]) > RVir[S[2, 1]])
                   & (GP[:, 0] > np.min(f[:, 0]) - rmax) & (GP[:, 0] < np.max(f[:, 0]) + rmax)
                   & (GP[:, 1] > np.min(f[:, 1]) - rmax) & (GP[:, 1] < np.max(f[:, 1]) + rmax)
                   & (GP[:, 2] > np.min(f[:, 2]) - rmax) & (GP[:, 2] < np.max(f[:, 2]) + rmax))
-    GP, T = GP[ID[0]], T[ID[0]]
+
+    GP = GP[ID[0]]
+    if parttype == 0:
+        T = T[ID[0]]
 
     long = 0
     ID = np.array([])
@@ -365,39 +369,64 @@ def Plot_RadialProfile(sN, M0=300, rmax=1):
         t = - np.dot(f1_GP, dir)
         d = np.linalg.norm(f1_GP - np.transpose(t*dir[:, np.newaxis]), axis=1)
         ID = np.where((t < tmax) & (t > 0) & (d < rmax))
+
         if i == 0:
             GPf = GP[ID[0]]
-            Tf = T[ID[0]]
             per_dis = d[ID[0]]
             long_dis = long + t[ID[0]]
+            if parttype == 0:
+                Tf = T[ID[0]]
         else:
             GPf = np.append(GPf, GP[ID[0]], axis=0)
-            Tf = np.append(Tf, T[ID[0]])
             per_dis = np.append(per_dis, d[ID[0]])
             long_dis = np.append(long_dis, long + t[ID[0]])
-        GP = np.delete(GP, ID[0], axis=0)
-        T = np.delete(T, ID[0])
-        long += get_Distance(f1, f2)
+            if parttype == 0:
+                Tf = np.append(Tf, T[ID[0]])
 
+        GP = np.delete(GP, ID[0], axis=0)
+        if parttype == 0:
+            T = np.delete(T, ID[0])
+        long += get_Distance(f1, f2)
     """
+    ID = np.where((Tf > 10**5) & (Tf < 10**7))
+    print (len(ID[0]))
+    plt.hist(per_dis[ID[0]], bins=100)
+    plt.show()
+    ID = np.where((Tf > 10**7))
+    print (len(ID[0]))
+    plt.hist(per_dis[ID[0]], bins=100)
+    plt.show()
+    ID = np.where((Tf < 10**5))
+    print (len(ID[0]))
+    plt.hist(per_dis[ID[0]], bins=100)
+    plt.show()
+    """
+    # GPf = GPf[ID[0]]
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(GPf[:, 0], GPf[:, 1], GPf[:, 2], s=1)
-    ax.plot(f[:4, 0], f[:4, 1], f[:4, 2], color='red')
-    ax.scatter(f[:4, 0], f[:4, 1], f[:4, 2], color='red')
-    ax.set_xlim([-2, 2])
-    ax.set_ylim([1, 6])
-    ax.set_zlim([-1, 5])
+    ax.plot(f[:, 0], f[:, 1], f[:, 2], color='red')
+    ax.scatter(f[:, 0], f[:, 1], f[:, 2], color='red')
+    #ax.set_xlim([-2, 2])
+    #ax.set_ylim([1, 6])
+    #ax.set_zlim([-1, 5])
     # print (dis.shape)
     # plt.hist(dis)
+    plt.show()
+    plt.clf()
     print (get_FilamentDistance(f))
-    """
-    plt.hist2d(long_dis/get_FilamentDistance(f), per_dis, bins=[20, 20])
+    #plt.hist(long_dis)
+
+
+
+    plt.hist2d(long_dis, per_dis, bins=[50, 50])
+    # plt.hist2d(long_dis[ID[0]]/get_FilamentDistance(f), per_dis[ID[0]], bins=[50, 50])
     # plt.hist(per_dis, range=[0, 1], bins=20)
+    plt.colorbar()
     plt.show()
 
 
-Plot_RadialProfile(41, rmax=1)
+Plot_RadialProfile(41, rmax=1, parttype=5)
 
 
 def Plot_Ridge2D(sN, gN, h=0.01, D=2, weights=False):
