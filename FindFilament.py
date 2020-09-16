@@ -161,6 +161,7 @@ def Get_Filaments(sN, M0=300):
 
     ID = np.where(MVir > MLim)
     N = len(ID[0])
+    FoF = np.linspace(0, len(PP), len(PP) + 1)[ID[0]]
     PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
     """
     fig = plt.figure()
@@ -201,7 +202,7 @@ def Get_Filaments(sN, M0=300):
             if f.shape[0] != 0:
                 # if i != np.argmin(get_Distance(PP, pt)):
                 F.append(f)
-                S.append([i, np.argmin(get_Distance(PP, pt))])
+                S.append([i, FoF[np.argmin(get_Distance(PP, pt))]])
 
     F, S = np.array(F), np.array(S)
     """
@@ -222,22 +223,11 @@ def Get_Filaments(sN, M0=300):
 
 def FilamentDistance(sN, M0=300):
     F, S = Get_Filaments(sN)
-    SnP = "Snap/snap_%03d" % sN                          # Snap Path and file
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
-
-    SnH = rs.snapshot_header(SnP)                       # Snap Header
-    z0, Om_m, Om_l = SnH.redshift, SnH.omega_m, SnH.omega_l  # Redshift, Density paramaters
-    E = (Om_m*(1 + z0)**3 + Om_l)**(0.5)
-
-    MLim = M0/E
 
     PP = rs.read_sf_block(SfP, 'GPOS')/10**3                # Galaxy positions (reducing to lower numbers so exp(PP) is not 0)
     RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
-    MVir = rs.read_sf_block(SfP, 'MVIR')                    # Mass Virial
     PP -= PP[0]                                             # Shifting system so central galaxy is in center
-
-    ID = np.where(MVir > MLim)
-    PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
 
     D = np.empty(len(F))
     MD = np.empty(len(F))
@@ -329,20 +319,11 @@ def Plot_RadialProfile(sN, M0=300, rmax=1, parttype=0):
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
 
     PP = rs.read_sf_block(SfP, 'GPOS')/10**3                # Galaxy positions (reducing to lower numbers so exp(PP) is not 0)
-    GP = rs.read_block(SnP, 'POS', parttype=parttype)/10**3 # Particle Position
+    GP = rs.read_block(SnP, 'POS', parttype=parttype)/10**3  # Particle Position
     if parttype == 0:
         T = rs.read_block(SnP, 'TEMP', parttype=parttype)   # Gas Temperature
 
     RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
-    MVir = rs.read_sf_block(SfP, 'MVIR')                    # Mass Virial
-
-    SnH = rs.snapshot_header(SnP)                           # Snap Header
-    z0, Om_m, Om_l = SnH.redshift, SnH.omega_m, SnH.omega_l  # Redshift, Density paramaters
-    E = (Om_m*(1 + z0)**3 + Om_l)**(0.5)
-    MLim = M0/E
-
-    ID = np.where(MVir > MLim)
-    PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
 
     GP, PP = GP - PP[0], PP - PP[0]                         # Shifting system so central galaxy is in center
     F, S = Get_Filaments(41)
@@ -407,9 +388,9 @@ def Plot_RadialProfile(sN, M0=300, rmax=1, parttype=0):
     ax.scatter(GPf[:, 0], GPf[:, 1], GPf[:, 2], s=1)
     ax.plot(f[:, 0], f[:, 1], f[:, 2], color='red')
     ax.scatter(f[:, 0], f[:, 1], f[:, 2], color='red')
-    #ax.set_xlim([-2, 2])
-    #ax.set_ylim([1, 6])
-    #ax.set_zlim([-1, 5])
+    # ax.set_xlim([-2, 2])
+    # ax.set_ylim([1, 6])
+    # ax.set_zlim([-1, 5])
     # print (dis.shape)
     # plt.hist(dis)
     plt.show()
