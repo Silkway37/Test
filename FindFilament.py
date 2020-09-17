@@ -161,7 +161,7 @@ def Get_Filaments(sN, M0=300):
 
     ID = np.where(MVir > MLim)
     N = len(ID[0])
-    FoF = np.linspace(0, len(PP), len(PP) + 1)[ID[0]]
+    FoF = np.linspace(0, len(PP), len(PP) + 1, dtype=int)[ID[0]]
     PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
     """
     fig = plt.figure()
@@ -314,7 +314,7 @@ def FilamentDistance(sN, M0=300):
 # FilamentDistance(41)
 
 
-def Plot_RadialProfile(sN, M0=300, rmax=1, parttype=0):
+def Plot_RadialProfile(sN, fN, M0=300, rmax=1, parttype=0):
     SnP = "Snap/snap_%03d" % sN                             # Snap Path and file
     SfP = "Subfind/groups_%03d/sub_%03d" % (sN, sN)         # Subfind Path and file
 
@@ -326,11 +326,11 @@ def Plot_RadialProfile(sN, M0=300, rmax=1, parttype=0):
     RVir = rs.read_sf_block(SfP, 'RVIR')/10**3              # Radii Virial
 
     GP, PP = GP - PP[0], PP - PP[0]                         # Shifting system so central galaxy is in center
-    F, S = Get_Filaments(41)
+    F, S = Get_Filaments(41, M0=M0)
 
-    f = F[3]
-    ID = np.where((get_Distance(GP, PP[S[2, 0]]) > RVir[S[2, 0]])
-                  & (get_Distance(GP, PP[S[2, 1]]) > RVir[S[2, 1]])
+    f = F[fN]
+    ID = np.where((get_Distance(GP, PP[S[fN, 0]]) > RVir[S[fN, 0]])
+                  & (get_Distance(GP, PP[S[fN, 1]]) > RVir[S[fN, 1]])
                   & (GP[:, 0] > np.min(f[:, 0]) - rmax) & (GP[:, 0] < np.max(f[:, 0]) + rmax)
                   & (GP[:, 1] > np.min(f[:, 1]) - rmax) & (GP[:, 1] < np.max(f[:, 1]) + rmax)
                   & (GP[:, 2] > np.min(f[:, 2]) - rmax) & (GP[:, 2] < np.max(f[:, 2]) + rmax))
@@ -340,7 +340,6 @@ def Plot_RadialProfile(sN, M0=300, rmax=1, parttype=0):
         T = T[ID[0]]
 
     long = 0
-    ID = np.array([])
 
     for i in range(len(f)-1):
         f1, f2 = f[i], f[i+1]
@@ -368,21 +367,13 @@ def Plot_RadialProfile(sN, M0=300, rmax=1, parttype=0):
         if parttype == 0:
             T = np.delete(T, ID[0])
         long += get_Distance(f1, f2)
-    """
-    ID = np.where((Tf > 10**5) & (Tf < 10**7))
-    print (len(ID[0]))
-    plt.hist(per_dis[ID[0]], bins=100)
-    plt.show()
-    ID = np.where((Tf > 10**7))
-    print (len(ID[0]))
-    plt.hist(per_dis[ID[0]], bins=100)
-    plt.show()
-    ID = np.where((Tf < 10**5))
-    print (len(ID[0]))
-    plt.hist(per_dis[ID[0]], bins=100)
-    plt.show()
-    """
+
+    if parttype == 0:
+        WHIM = np.where((Tf > 10**5) & (Tf < 10**7))
+        HOT = np.where((Tf > 10**7))
+        COLD = np.where((Tf < 10**5))
     # GPf = GPf[ID[0]]
+    """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(GPf[:, 0], GPf[:, 1], GPf[:, 2], s=1)
@@ -397,7 +388,7 @@ def Plot_RadialProfile(sN, M0=300, rmax=1, parttype=0):
     plt.clf()
     print (get_FilamentDistance(f))
     #plt.hist(long_dis)
-
+    """
 
 
     plt.hist2d(long_dis, per_dis, bins=[50, 50])
@@ -407,7 +398,7 @@ def Plot_RadialProfile(sN, M0=300, rmax=1, parttype=0):
     plt.show()
 
 
-Plot_RadialProfile(41, rmax=1, parttype=5)
+Plot_RadialProfile(41, 2, rmax=1, parttype=0)
 
 
 def Plot_Ridge2D(sN, gN, h=0.01, D=2, weights=False):
