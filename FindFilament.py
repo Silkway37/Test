@@ -160,8 +160,9 @@ def Get_Filaments(sN, M0=300):
     print ("Number and dimension of points:", G.shape)
 
     ID = np.where(MVir > MLim)
-    N, FoF = len(ID[0]), ID[0]
-    PP, RVir, MVir = PP[FoF], RVir[FoF], MVir[FoF]
+    N = len(ID[0])
+    FoF = np.linspace(0, len(PP), len(PP) + 1, dtype=int)[ID[0]]
+    PP, RVir, MVir = PP[ID[0]], RVir[ID[0]], MVir[ID[0]]
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -372,7 +373,7 @@ def Plot_RadialProfile(sN, fN, M0=300, rmax=1, parttype=0):
         HOT = np.where((Tf > 10**7))
         COLD = np.where((Tf < 10**5))
     # GPf = GPf[ID[0]]
-
+    """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(GPf[:, 0], GPf[:, 1], GPf[:, 2], s=1)
@@ -387,6 +388,8 @@ def Plot_RadialProfile(sN, fN, M0=300, rmax=1, parttype=0):
     plt.clf()
     print (get_FilamentDistance(f))
     #plt.hist(long_dis)
+    """
+
 
     plt.hist2d(long_dis, per_dis, bins=[50, 50])
     # plt.hist2d(long_dis[ID[0]]/get_FilamentDistance(f), per_dis[ID[0]], bins=[50, 50])
