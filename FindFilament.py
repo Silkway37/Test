@@ -7,7 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import LogNorm
 from scipy.stats import multivariate_normal
 from progressbar import ProgressBar
-
+from matplotlib.collections import LineCollection
 
 def get_Direction(x, y):
     return (y-x)/np.linalg.norm(y-x)
@@ -320,6 +320,7 @@ def Plot_RadialProfile(sN, fN, M0=300, rmax=1, parttype=0):
 
     PP = rs.read_sf_block(SfP, 'GPOS')/10**3                # Galaxy positions (reducing to lower numbers so exp(PP) is not 0)
     GP = rs.read_block(SnP, 'POS', parttype=parttype)/10**3  # Particle Position
+    MP = rs.read_block(SnP, 'MASS', parttype=parttype)
     if parttype == 0:
         T = rs.read_block(SnP, 'TEMP', parttype=parttype)   # Gas Temperature
 
@@ -335,7 +336,7 @@ def Plot_RadialProfile(sN, fN, M0=300, rmax=1, parttype=0):
                   & (GP[:, 1] > np.min(f[:, 1]) - rmax) & (GP[:, 1] < np.max(f[:, 1]) + rmax)
                   & (GP[:, 2] > np.min(f[:, 2]) - rmax) & (GP[:, 2] < np.max(f[:, 2]) + rmax))
 
-    GP = GP[ID[0]]
+    GP, MP = GP[ID[0]], MP[ID[0]]
     if parttype == 0:
         T = T[ID[0]]
 
@@ -351,13 +352,13 @@ def Plot_RadialProfile(sN, fN, M0=300, rmax=1, parttype=0):
         ID = np.where((t < tmax) & (t > 0) & (d < rmax))
 
         if i == 0:
-            GPf = GP[ID[0]]
+            GPf, MPf = GP[ID[0]], MP[ID[0]]
             per_dis = d[ID[0]]
             long_dis = long + t[ID[0]]
             if parttype == 0:
                 Tf = T[ID[0]]
         else:
-            GPf = np.append(GPf, GP[ID[0]], axis=0)
+            GPf, MPf = np.append(GPf, GP[ID[0]], axis=0), np.append(MPf, MP[ID[0]])
             per_dis = np.append(per_dis, d[ID[0]])
             long_dis = np.append(long_dis, long + t[ID[0]])
             if parttype == 0:
@@ -372,7 +373,7 @@ def Plot_RadialProfile(sN, fN, M0=300, rmax=1, parttype=0):
         WHIM = np.where((Tf > 10**5) & (Tf < 10**7))
         HOT = np.where((Tf > 10**7))
         COLD = np.where((Tf < 10**5))
-    # GPf = GPf[ID[0]]
+
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -390,15 +391,45 @@ def Plot_RadialProfile(sN, fN, M0=300, rmax=1, parttype=0):
     #plt.hist(long_dis)
     """
 
+    h = 0.1
+    xb = np.insert(np.arange(0.1, rmax + h, h), 0, 0)
+    yb = np.linspace(0, long, 20)
 
-    plt.hist2d(long_dis, per_dis, bins=[50, 50])
+    rho, xb, yb = np.histogram2d(per_dis, long_dis, bins=(xb, yb), weights=MPf)
+    S = len(rho[0])
+
+    fig, ax = plt.subplots()
+    ax.set_xlim(np.min(xb), np.max(xb))
+    ax.set_ylim(np.min(rho), np.max(rho))
+    vol = np.pi*(xb[1:]**2 - xb[:len(xb)-1]**2)
+    print (vol)
+    #print (np.transpose(rho)/yb[1:])
+    plots = [np.column_stack([xb[1:], y/(vol)]) for y in np.transpose(rho/yb[1:])]
+
+    line_segments = LineCollection(plots, linewidths=(0.5, 1, 1.5, 2), linestyles='solid')
+    line_segments.set_array(xb)
+    ax.add_collection(line_segments)
+    axcb = fig.colorbar(line_segments)
+    axcb.set_label('Line Number')
+    ax.set_title('Line Collection with mapped colors')
+    plt.sci(line_segments)  # This allows interactive changing of the colormap.
+
+    #colors = plt.cm.jet(np.linspace(0, 1, S))
+    #for i in range(S):
+    #    #print (i, yb[i], long)
+    #    plt.loglog(xb[1:], rho[:, i]/(yb[i+1]*np.pi*(xb[1:]**2 - xb[:len(xb)-1]**2)), color=colors[i])
+    #plt.colorbar()
+    plt.savefig('Figures/Test.png')
+
+
+    # plt.hist2d(long_dis, per_dis, bins=[50, 50])
     # plt.hist2d(long_dis[ID[0]]/get_FilamentDistance(f), per_dis[ID[0]], bins=[50, 50])
     # plt.hist(per_dis, range=[0, 1], bins=20)
-    plt.colorbar()
-    plt.show()
+    # plt.colorbar()
+    # plt.show()
 
 
-Plot_RadialProfile(41, 2, rmax=1, parttype=0)
+Plot_RadialProfile(41, 2, rmax=5, parttype=0)
 
 
 def Plot_Ridge2D(sN, gN, h=0.01, D=2, weights=False):
