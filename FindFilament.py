@@ -392,34 +392,26 @@ def Plot_RadialProfile(sN, fN, M0=300, rmax=1, parttype=0):
     """
 
     h = 0.1
-    xb = np.insert(np.arange(0.1, rmax + h, h), 0, 0)
+    xb = np.insert(np.arange(0.5, rmax + h, h), 0, 0)
     yb = np.linspace(0, long, 20)
+    vol = np.pi*(xb[1:]**2 - xb[:len(xb)-1]**2)
 
     rho, xb, yb = np.histogram2d(per_dis, long_dis, bins=(xb, yb), weights=MPf)
-    S = len(rho[0])
-
+    rho = np.transpose(np.transpose(rho/yb[1:])/vol)
+    m_rho = np.mean(rho)
+    plots = [np.column_stack([xb[1:], y]) for y in np.transpose(rho)/m_rho]
     fig, ax = plt.subplots()
-    ax.set_xlim(np.min(xb), np.max(xb))
-    ax.set_ylim(np.min(rho), np.max(rho))
-    vol = np.pi*(xb[1:]**2 - xb[:len(xb)-1]**2)
-    print (vol)
-    #print (np.transpose(rho)/yb[1:])
-    plots = [np.column_stack([xb[1:], y/(vol)]) for y in np.transpose(rho/yb[1:])]
-
-    line_segments = LineCollection(plots, linewidths=(0.5, 1, 1.5, 2), linestyles='solid')
-    line_segments.set_array(xb)
+    line_segments = LineCollection(plots, cmap=plt.cm.jet)
+    line_segments.set_array(yb)
     ax.add_collection(line_segments)
     axcb = fig.colorbar(line_segments)
-    axcb.set_label('Line Number')
-    ax.set_title('Line Collection with mapped colors')
-    plt.sci(line_segments)  # This allows interactive changing of the colormap.
-
-    #colors = plt.cm.jet(np.linspace(0, 1, S))
-    #for i in range(S):
-    #    #print (i, yb[i], long)
-    #    plt.loglog(xb[1:], rho[:, i]/(yb[i+1]*np.pi*(xb[1:]**2 - xb[:len(xb)-1]**2)), color=colors[i])
-    #plt.colorbar()
+    axcb.set_label('Distance from 1st FoF')
+    # ax.set_xlim(np.min(xb), np.max(xb))
+    # ax.set_ylim(np.min(rho), np.max(rho))
+    ax.set_xscale('log')
+    ax.set_yscale('log')
     plt.savefig('Figures/Test.png')
+    plt.clf()
 
 
     # plt.hist2d(long_dis, per_dis, bins=[50, 50])
