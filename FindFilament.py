@@ -448,7 +448,6 @@ def Plot_RadialProfile(sN, fN, M0=300, rmax=1, parttype=0):
     x = np.cos(u)*np.sin(v)
     y = np.sin(u)*np.sin(v)
     z = np.cos(v)
-
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(GPf[:, 0], GPf[:, 1], GPf[:, 2], s=1)
@@ -495,20 +494,15 @@ def Plot_RadialProfile(sN, fN, M0=300, rmax=1, parttype=0):
     print (RVir[0])
     """
     ID = WHIM[0]
-
     CW, xm, ym = np.histogram2d(long_dis, per_dis, bins=50,           # With weights
                                 normed=False, weights=Tf)
-
     CC, xm, ym = np.histogram2d(long_dis, per_dis, bins=50,            # Without weights
                                 normed=False)
-
     xm, ym = np.meshgrid(xm, ym, indexing='ij')         # Create meshgrid
-
     fig, ax = plt.subplots(1, 1)
     pcm = ax.pcolormesh(xm, ym, CW/CC,
                         cmap=plt.cm.jet)
                         #vmin=10**5, vmax=10**7)                      # Plot
-
     cbar = fig.colorbar(pcm, ax=ax, ticks=[10**5, 1*10**6, 2*10**6,
                                            3*10**6, 4*10**6,
                                            5*10**6, 6*10**6,
@@ -517,11 +511,11 @@ def Plot_RadialProfile(sN, fN, M0=300, rmax=1, parttype=0):
     cbar.ax.set_yticklabels(['$0.1$','$1$','$2$','$3$','$4$',
                              '$5$','$6$','$7$','$8$','$9$','$10$'])
     cbar.set_label('$T\,[10^{6}\cdot K]$', rotation=270, labelpad=15)
-
     plt.colorbar(pcm)
     plt.tight_layout()
     # plt.savefig('Figures/Test.png')
     plt.clf()
     """
+
 
 Plot_RadialProfile(41, 2, rmax=2, parttype=0)
